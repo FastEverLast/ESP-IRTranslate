@@ -1,0 +1,33 @@
+Filetype: IR signals file
+Version: 1
+#
+name: Power
+type: parsed
+protocol: NEC42
+address: 6E 00 00 00
+command: 00 00 00 00
+#
+name: Vol_up
+type: parsed
+protocol: NEC42
+address: 6E 00 00 00
+command: 4D 00 00 00
+#
+#
+name: Vol_up
+type: parsed
+protocol: NEC42ext
+address: 6E 00 00 00
+command: 4D 00 00 00
+#
+name: (NEC42ext)xxx
+protocol: NEC42ext
+address: FF 00 F0 03
+command: 0F F0 00 00
+repeat: false
+#
+name: NEC42ext
+protocol: NEC42ext
+address: AA AA AA 02
+command: 55 55 00 00
+repeat: false

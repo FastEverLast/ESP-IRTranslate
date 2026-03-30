@@ -1,0 +1,52 @@
+Filetype: IR signals file
+Version: 1
+# 
+# Xbox One confirmed
+#
+name: Power
+type: parsed
+protocol: NEC
+address: 08 00 00 00
+command: 05 00 00 00
+#
+name: Vol_up
+type: parsed
+protocol: NEC
+address: 08 00 00 00
+command: 00 00 00 00
+#
+name: Vol_dn
+type: parsed
+protocol: NEC
+address: 08 00 00 00
+command: 01 00 00 00
+#
+name: Ch_next
+type: parsed
+protocol: NEC
+address: 08 00 00 00
+command: 02 00 00 00
+#
+name: Ch_prev
+type: parsed
+protocol: NEC
+address: 08 00 00 00
+command: 03 00 00 00
+#
+name: Open
+type: raw
+frequency: 38000
+duty_cycle: 0.330000
+data: 2630 926 463 426 463 425 463 871 462 873 1323 897 462 426 462 425 464 424 464 426 462 425 463 426 462 425 463 424 464 425 464 425 882 485 429 425 464 425 463 873 878 485 429 426 463 870 881 896 463 426 463 426 462 424 883 896 881 895 464 427 461 424 464 69495 2631 929 434 451 438 451 437 898 435 898 1324 898 435 453 435 451 437 452 436 453 435 452 436 451 437 452 436 452 436 453 435 452 882 486 401 452 437 451 437 896 882 485 402 453 436 897 881 897 435 452 436 452 437 452 882 897 880 896 461 427 461 429 459
+#
+name: Mute
+type: parsed
+protocol: NECext
+address: 08 00 00 00
+command: 0B 00 00 00
+#
+name: NEC42 Power
+type: parsed
+protocol: NEC42
+address: 7B 00 00 00
+command: 00 00 00 00
