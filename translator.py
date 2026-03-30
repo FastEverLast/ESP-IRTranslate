@@ -166,18 +166,11 @@ def nec42_pronto():
         pronto.append(P_BURST)
         pronto.append(ONE_SPACE if bit == '1' else ZERO_SPACE)
 
-    # *** THE STOP BIT ***
-    # This is the 0015 pulse that marks the end of the 42nd bit.
+    # THE STOP BIT
     pronto.append(P_BURST)
-
-    # The Lead-out gap (this completes the final burst pair)
     pronto.append("036B")
-
-    # --- REPEAT SEQUENCE ---
-    # Lead-in (9ms), Space (2.25ms), Pulse (560us), and long tail
     pronto.extend(["0156", "00AB", "0015", "0DED"])
 
-    # Join and format
     pronto_str = " ".join(pronto).upper()
 
     writer = f"""
@@ -198,21 +191,20 @@ def nec42ext_pronto():
     ONE_SPACE = "0040"
 
     def hex_to_bits(hex_str, bit_count):
-        # Handle input like "FF FF FF 03" (Little Endian)
+        # Handle Little Endian
         bytes_val = bytes.fromhex(hex_str)
         val = int.from_bytes(bytes_val, byteorder='little')
         mask = (1 << bit_count) - 1
         val &= mask
-        # LSB first
+
         return format(val, f'0{bit_count}b')[::-1]
 
-    # NEC42Ext: 26 bits Address + 16 bits Command (No Inversion)
+    # NEC42Ext: No Inversion
     addr_bits = hex_to_bits(entry['address'], 26)
     cmd_bits = hex_to_bits(entry['command'], 16)
 
-    total_bits = addr_bits + cmd_bits  # 26 + 16 = 42 bits total
+    total_bits = addr_bits + cmd_bits
 
-    # Header: 002C (44 pairs) for "once", 0002 for "repeat"
     pronto = ["0000", "006D", "002C", "0002"]
 
     # --- ONCE SEQUENCE ---
@@ -226,8 +218,6 @@ def nec42ext_pronto():
 
     # Stop Bit + Lead-out Gap
     pronto.extend([P_BURST, "036B"])
-
-    # --- REPEAT SEQUENCE ---
     pronto.extend(["0156", "00AB", "0015", "0DED"])
 
     pronto_str = " ".join(pronto).upper()
@@ -251,7 +241,6 @@ def samsung32_samsung():
             a[1] = a[0]
             c[1] = c[0]
 
-    # Function to flip the bits of any byte
     def flip(h):
         val = int(h, 16)
         reversed_val = int('{:08b}'.format(val)[::-1], 2)
@@ -299,21 +288,14 @@ def rc5_rc5():
         file.write(writer)
 
 def rc5x_rc5():
-    # Split to get the first byte of your Little Endian input
     addr_hex = entry['address'].split()[0]
     cmd_hex = entry['command'].split()[0]
 
-    # Convert to integers to handle the 7-bit range (up to 127)
-    # 5-bits for address (0-31), 7-bits for command (0-127)
     addr_val = int(addr_hex, 16) & 0x1F
     cmd_val = int(cmd_hex, 16) & 0x7F
-
-    # Format as 0xXX for the YAML output
     addr = f"0x{addr_val:02X}"
     cmd = f"0x{cmd_val:02X}"
 
-    # ESPHome's rc5 transmitter handles the S2/Extension bit
-    # automatically when the command is > 63.
     writer = f"""
 - platform: template
   name: "{entry['name']}"
@@ -326,20 +308,14 @@ def rc5x_rc5():
         file.write(writer)
 
 def rc6_rc6():
-    # Split to get the first byte of your Little Endian input (FF 00 00 00)
-    # Both address and command are 8-bit (0-255 / 0x00-0xFF)
     addr_hex = entry['address'].split()[0]
     cmd_hex = entry['command'].split()[0]
-
-    # Convert to integers and mask to 8 bits
     addr_val = int(addr_hex, 16) & 0xFF
     cmd_val = int(cmd_hex, 16) & 0xFF
 
-    # Format as 0xXX for the YAML output
     addr = f"0x{addr_val:02X}"
     cmd = f"0x{cmd_val:02X}"
 
-    # ESPHome's RC6 implementation defaults to Mode 0
     writer = f"""
 - platform: template
   name: "{entry['name']}"
@@ -406,7 +382,6 @@ def sirc_sony():
     # Command is always 7 bits
     cmd_bin = format(cmd_int, '07b')[::-1]
 
-    # Address is (Total Bits - 7)
     addr_len = bits - 7
     addr_bin = format(addr_int, f'0{addr_len}b')[::-1]
 
@@ -436,44 +411,34 @@ def kaseikyo_panasonic():
         """Reverses bits in an 8-bit byte."""
         return int('{:08b}'.format(val)[::-1], 2)
 
-    # 1. Parse Flipper Address (Stored as a 32-bit packed integer)
-    # Example: '80 02 20 01'
+
     addr_bytes = [int(b, 16) for b in entry['address'].split()]
 
-    # Extract components per the C code logic
-    f_id = addr_bytes[0]  # 0x80
-    f_vendor_l = addr_bytes[1]  # 0x02
-    f_vendor_h = addr_bytes[2]  # 0x20
-    f_genre = addr_bytes[3]  # 0x01
+    f_id = addr_bytes[0]
+    f_vendor_l = addr_bytes[1]
+    f_vendor_h = addr_bytes[2]
+    f_genre = addr_bytes[3]
 
-    # 2. Parse Flipper Command
-    # Example: 'D0 03 00 00'
+
     cmd_bytes = [int(b, 16) for b in entry['command'].split()]
-    f_cmd_l = cmd_bytes[0]  # 0xD0
-    f_cmd_h = cmd_bytes[1]  # 0x03
+    f_cmd_l = cmd_bytes[0]  #
+    f_cmd_h = cmd_bytes[1]
 
-    # 3. Convert to ESPHome Format
-    # ESPHome Address = Reversed Vendor ID
+
+    # ESPHome Address = Reversed Vendor ID I think...
     esphome_addr = (rev8(f_vendor_l) << 8) | rev8(f_vendor_h)
 
-    # ESPHome Command Construction (The 28-bit frame)
-    # We reverse the ID, the Command Bytes, and the Genre
-    prefix = rev8(f_id)  # 80 -> 10 (or 1 in high nibble)
-    c1 = rev8(f_cmd_l)  # D0 -> 0B
-    c2 = rev8(f_cmd_h)  # 03 -> C0
-    gen = rev8(f_genre)  # 01 -> 80
 
-    # Calculate the XOR Checksum (Byte 5 in the C code)
-    # Note: ESPHome handles this internally, but to generate the
-    # specific '0x100BCBD' string, we include the checksum digit.
+    prefix = rev8(f_id)
+    c1 = rev8(f_cmd_l)
+    c2 = rev8(f_cmd_h)
+    gen = rev8(f_genre)
+
+
     checksum = (prefix ^ c1 ^ c2 ^ gen) & 0x0F
-
-    # Pack into the 28-bit integer
-    # [Prefix][Genre][C1][C2_High][Checksum]
-    # Note: Shift amounts vary based on your specific TV's bit-depth
     esphome_cmd = (prefix << 24) | (c1 << 12) | (c2 << 4) | checksum
 
-    print(f"address: 0x{esphome_addr:04X}, command: 0x{esphome_cmd:X}")
+    print(f"address: 0x{esphome_addr:04X}, command: 0x{esphome_cmd:X}") # Still working on it...
 
 
 
@@ -481,35 +446,30 @@ def kaseikyo_panasonic():
 
 def rca_raw():
     def reverse_8bits(val):
-        """Reverses the bits in an 8-bit byte (e.g., 0x0F -> 0xF0)."""
         return int('{:08b}'.format(val)[::-1], 2)
-    # 1. Parse the first byte of the Flipper hex strings
-    addr = int(entry['address'].split()[0], 16)  # 0x0F
-    cmd = int(entry['command'].split()[0], 16)  # 0x47
 
-    # 2. Calculate the 8-bit Inverse of the Command
+    addr = int(entry['address'].split()[0], 16)
+    cmd = int(entry['command'].split()[0], 16)
+
     inv_cmd = ~cmd & 0xFF  # 0xB8
 
-    # 3. Bit-Reverse each byte individually to match LSB-first transmission
-    addr_rev = reverse_8bits(addr)  # 0x0F (00001111) -> 0xF0 (11110000)
-    cmd_rev = reverse_8bits(cmd)  # 0x47 (01000111) -> 0xE2 (11100010)
-    inv_rev = reverse_8bits(inv_cmd)  # 0xB8 (10111000) -> 0x1D (00011101)
 
-    # 4. Assemble the 24-bit payload in MSB order for the pulse loop
+    addr_rev = reverse_8bits(addr)
+    cmd_rev = reverse_8bits(cmd)
+    inv_rev = reverse_8bits(inv_cmd)
     payload = (addr_rev << 16) | (cmd_rev << 8) | inv_rev
 
-    # 5. Generate the Timings
-    # Start with the Header (4000 High, 4000 Low)
+
     raw_code = [4000, -4000]
 
-    # Process the 24 bits
+
     for i in range(23, -1, -1):
         bit = (payload >> i) & 1
-        raw_code.append(500)  # The "Mark"
+        raw_code.append(500)
         if bit == 1:
-            raw_code.append(-2000)  # The "1" Space
+            raw_code.append(-2000)
         else:
-            raw_code.append(-1000)  # The "0" Space
+            raw_code.append(-1000)
 
     # Lead-out
     raw_code.append(500)
