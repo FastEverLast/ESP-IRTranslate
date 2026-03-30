@@ -406,9 +406,8 @@ def sirc_sony():
 
 
 
-def kaseikyo_panasonic():
+def kaseikyo_panasonic():    # Who came up with this standard??  I despise it
     def rev8(val):
-        """Reverses bits in an 8-bit byte."""
         return int('{:08b}'.format(val)[::-1], 2)
 
 
